@@ -1,13 +1,30 @@
 import React, { useState } from 'react';
 import { DEFAULT_LEAF_IMAGE } from '../../constants/data';
 
-export default function ResultTab({ onNavigate }) {
+export default function ResultTab({ scanResult, onNavigate }) {
   const [savedScanToast, setSavedScanToast] = useState(false);
 
   const handleSave = () => {
     setSavedScanToast(true);
     setTimeout(() => setSavedScanToast(false), 3000);
   };
+
+  // Active data source: passed scanResult or default fallback
+  const diseaseName = scanResult?.prediction || "Tomato Early Blight";
+  const cropName = scanResult?.crop || "Tomato";
+  const pathogenName = scanResult?.pathogen || "Alternaria solani";
+  const severityLevel = scanResult?.severity || "Moderate";
+  const confidenceScore = scanResult?.confidence_percentage || (scanResult?.confidence ? `${int(scanResult.confidence * 100)}%` : "91%");
+  const confidenceNum = Math.round((scanResult?.confidence || 0.91) * 100);
+  const imageSrc = scanResult?.image || DEFAULT_LEAF_IMAGE;
+  const precautions = scanResult?.precautions || [
+    "Remove visibly affected lower leaves near the base to prevent spore release.",
+    "Avoid unnecessary overhead watering; switch strictly to drip irrigation.",
+    "Monitor nearby plants daily for early sign of concentric spot formation.",
+    "Consult local agricultural guidance if symptoms spread to upper canopy."
+  ];
+  const isPlaceholder = scanResult?.is_placeholder ?? false;
+  const modelArch = scanResult?.model_info?.architecture || "ResNet-50 Classifier";
 
   return (
     <section className="tab-content space-y-6 animate-fade-in-up" id="tab-Disease-Result">
@@ -43,6 +60,17 @@ export default function ResultTab({ onNavigate }) {
         </div>
       </div>
 
+      {/* Model Checkpoint Warning Badge if Placeholder */}
+      {isPlaceholder && (
+        <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200 text-xs flex items-center justify-between shadow-sm">
+          <span className="flex items-center gap-2 font-medium">
+            <span className="material-symbols-outlined text-blue-600 text-base" data-icon="info">info</span>
+            <span>ML Checkpoint Integration Adapter Mode: Showing response structure for .pth model integration.</span>
+          </span>
+          <span className="font-mono text-[11px] bg-white dark:bg-blue-900 px-2 py-0.5 rounded border">Pending model/weights/.pth</span>
+        </div>
+      )}
+
       {/* Alert Notification Bar with soft warning pulse */}
       <div className="p-4 sm:p-5 rounded-3xl bg-[#fffbeb] dark:bg-amber-950/40 border border-[#f59e0b] dark:border-amber-600/50 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-200">
         <div className="flex items-center gap-3.5">
@@ -54,10 +82,10 @@ export default function ResultTab({ onNavigate }) {
               <span className="px-3 py-0.5 rounded-full text-label-sm font-label-sm font-bold bg-[#fef3c7] dark:bg-amber-900/60 text-[#92400e] dark:text-amber-200 border border-[#f59e0b] dark:border-amber-600/60 shadow-sm animate-pulse">
                 Possible disease detected
               </span>
-              <span className="text-body-sm font-body-sm text-on-surface-variant dark:text-emerald-300/70">Crop: Tomato</span>
+              <span className="text-body-sm font-body-sm text-on-surface-variant dark:text-emerald-300/70">Crop: {cropName}</span>
             </div>
             <p className="text-label-lg font-label-lg font-bold text-[#92400e] dark:text-amber-300 mt-0.5">
-              Tomato Early Blight (Alternaria solani) — Moderate Severity
+              {diseaseName} ({pathogenName}) — {severityLevel} Severity
             </p>
           </div>
         </div>
@@ -78,15 +106,15 @@ export default function ResultTab({ onNavigate }) {
           <div className="bg-surface-container-lowest dark:bg-[#112117] rounded-3xl p-6 border border-[#14532d]/10 dark:border-emerald-800/30 shadow-md space-y-4 transition-colors duration-200 hover-lift">
             <div className="flex items-center justify-between">
               <span className="text-label-lg font-label-lg font-bold text-on-surface dark:text-[#ecfdf5]">Computer Vision Analysis</span>
-              <span className="text-label-sm font-label-sm text-primary dark:text-primary-fixed font-bold bg-primary/10 dark:bg-primary-fixed/20 px-2.5 py-0.5 rounded-md">ResNet Classifier</span>
+              <span className="text-label-sm font-label-sm text-primary dark:text-primary-fixed font-bold bg-primary/10 dark:bg-primary-fixed/20 px-2.5 py-0.5 rounded-md">{modelArch}</span>
             </div>
 
             {/* Image with Animated Pulsating Bounding Box Overlay */}
             <div className="relative rounded-2xl overflow-hidden bg-black/5 dark:bg-black/40 border border-outline-variant/40 dark:border-emerald-800/40 flex items-center justify-center group">
               <img
-                alt="Analyzed Tomato Leaf with Early Blight lesions"
+                alt="Analyzed Crop Leaf Specimen"
                 className="w-full max-h-[380px] object-cover rounded-xl group-hover:scale-105 transition-transform duration-700"
-                src={DEFAULT_LEAF_IMAGE}
+                src={imageSrc}
               />
               {/* Dynamic Lesion Target Bounding Box */}
               <div className="absolute top-[36%] left-[40%] w-[26%] h-[24%] border-2 border-dashed border-red-500 bg-red-500/20 rounded-lg pointer-events-none flex flex-col justify-between p-1 animate-target-box z-10">
@@ -102,7 +130,7 @@ export default function ResultTab({ onNavigate }) {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span>Tomato Leaflet Specimen</span>
+                <span>{cropName} Leaflet Specimen</span>
               </div>
             </div>
 
@@ -111,19 +139,19 @@ export default function ResultTab({ onNavigate }) {
               <div className="p-3.5 rounded-2xl bg-[#ecfdf5] dark:bg-[#152a1d] border border-[#14532d]/10 dark:border-emerald-700/40 hover-lift">
                 <span className="text-label-sm font-label-sm text-on-surface-variant dark:text-emerald-300/80">Model Confidence</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">91%</span>
+                  <span className="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">{confidenceScore}</span>
                   <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">Confidence</span>
                 </div>
                 <div className="w-full bg-surface-container-high dark:bg-[#0c1811] h-2 rounded-full mt-2 overflow-hidden border border-transparent dark:border-emerald-800/30">
-                  <div className="bg-gradient-to-r from-emerald-500 to-primary-container h-full rounded-full" style={{ width: '91%' }}></div>
+                  <div className="bg-gradient-to-r from-emerald-500 to-primary-container h-full rounded-full" style={{ width: `${confidenceNum}%` }}></div>
                 </div>
               </div>
               <div className="p-3.5 rounded-2xl bg-[#fffbeb] dark:bg-amber-950/30 border border-[#f59e0b]/30 dark:border-amber-700/40 hover-lift">
                 <span className="text-label-sm font-label-sm text-[#92400e] dark:text-amber-300">Severity Stage</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-headline-md font-headline-md font-bold text-[#b45309] dark:text-amber-400">Moderate</span>
+                  <span className="text-headline-md font-headline-md font-bold text-[#b45309] dark:text-amber-400">{severityLevel}</span>
                 </div>
-                <p className="text-[11px] font-medium text-[#92400e] dark:text-amber-300 mt-1">Isolated foliar spread</p>
+                <p className="text-[11px] font-medium text-[#92400e] dark:text-amber-300 mt-1">Foliar symptom spread</p>
               </div>
             </div>
           </div>
@@ -132,7 +160,7 @@ export default function ResultTab({ onNavigate }) {
           <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 flex items-start gap-3 shadow-sm">
             <span className="material-symbols-outlined text-amber-800 dark:text-amber-400 text-lg mt-0.5 flex-shrink-0 animate-bounce" data-icon="warning">warning</span>
             <p className="text-label-sm font-label-sm text-amber-900 dark:text-amber-200 leading-relaxed">
-              <strong>Disclaimer:</strong> ⚠️ AI-generated prediction. Results should be verified with appropriate agricultural expertise before treatment decisions.
+              <strong>Disclaimer:</strong> {scanResult?.disclaimer || "⚠️ AI-generated prediction. Results should be verified with appropriate agricultural expertise before treatment decisions."}
             </p>
           </div>
         </div>
@@ -143,31 +171,26 @@ export default function ResultTab({ onNavigate }) {
           <div className="bg-surface-container-lowest dark:bg-[#112117] rounded-3xl p-6 sm:p-7 border border-[#14532d]/10 dark:border-emerald-800/30 shadow-md space-y-3 transition-colors duration-200 hover-lift">
             <div className="flex items-center justify-between border-b border-outline-variant/20 dark:border-emerald-900/30 pb-3.5">
               <div>
-                <h3 className="text-headline-md font-headline-md font-bold text-on-surface dark:text-[#ecfdf5]">Tomato Early Blight</h3>
-                <p className="text-body-sm font-body-sm italic text-on-surface-variant dark:text-emerald-300/70 font-mono">Alternaria solani</p>
+                <h3 className="text-headline-md font-headline-md font-bold text-on-surface dark:text-[#ecfdf5]">{diseaseName}</h3>
+                <p className="text-body-sm font-body-sm italic text-on-surface-variant dark:text-emerald-300/70 font-mono">{pathogenName}</p>
               </div>
               <span className="px-3 py-1 rounded-full text-label-sm font-label-sm bg-[#fffbeb] dark:bg-amber-950/50 text-[#92400e] dark:text-amber-300 border border-[#f59e0b] dark:border-amber-600/50 font-bold">
-                Possible Pathogen
+                Identified Pathogen
               </span>
             </div>
             <p className="text-body-md font-body-md text-on-surface-variant dark:text-emerald-200/80 leading-relaxed">
-              Early blight is characterized by concentric brown spots surrounded by chlorotic yellow halos. It is commonly triggered by high moisture and moderate temperature fluctuations. Prompt cultural practices and foliage aeration help prevent upward canopy migration.
+              Characterized by foliar chlorosis and necrotic spot development. Prompt cultural management, foliage aeration, and drip irrigation help minimize upward canopy migration.
             </p>
           </div>
 
-          {/* Practical Precautions with sequential hover illumination */}
+          {/* Practical Precautions */}
           <div className="bg-surface-container-lowest dark:bg-[#112117] rounded-3xl p-6 sm:p-7 border border-[#14532d]/10 dark:border-emerald-800/30 shadow-md space-y-3.5 transition-colors duration-200">
             <h4 className="text-label-lg font-label-lg font-bold text-on-surface dark:text-[#ecfdf5] flex items-center gap-2">
               <span className="material-symbols-outlined text-[#d97706] dark:text-amber-400" data-icon="task_alt">task_alt</span>
               <span>Recommended Precautions</span>
             </h4>
             <div className="space-y-3">
-              {[
-                { title: 'Remove visibly affected leaves', desc: 'Snip off diseased foliage near the base to prevent air/waterborne spore release to upper canopy leaves.' },
-                { title: 'Avoid unnecessary overhead watering', desc: 'Fungal spores need free surface water to germinate. Switch strictly to drip irrigation at root zones.' },
-                { title: 'Monitor nearby plants', desc: 'Check adjacent tomato and potato plants daily for early sign of concentric brown lesion formation.' },
-                { title: 'Consult local agricultural guidance if symptoms spread', desc: 'Consult certified extension personnel or local crop specialists to select safe organic or chemical treatments.' }
-              ].map((step, idx) => (
+              {precautions.map((stepText, idx) => (
                 <div
                   key={idx}
                   className="p-4 rounded-2xl bg-[#f4f7f4] dark:bg-[#15271c] border border-[#14532d]/10 dark:border-emerald-800/30 flex items-start gap-3.5 hover:border-primary dark:hover:border-emerald-500 hover:shadow-sm transition-all group"
@@ -176,11 +199,8 @@ export default function ResultTab({ onNavigate }) {
                     {idx + 1}
                   </div>
                   <div>
-                    <p className="text-label-md font-label-md font-bold text-on-surface dark:text-[#ecfdf5] group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">
-                      {step.title}
-                    </p>
-                    <p className="text-body-sm font-body-sm text-on-surface-variant dark:text-emerald-200/70 mt-0.5">
-                      {step.desc}
+                    <p className="text-body-sm font-body-sm text-on-surface dark:text-emerald-100 group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors leading-relaxed">
+                      {stepText}
                     </p>
                   </div>
                 </div>

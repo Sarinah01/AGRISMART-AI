@@ -1,0 +1,48 @@
+# Python & Environment
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Node & Frontend Build
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+frontend/build/
+.output/
+
+# Environment Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ML Checkpoints & Large Data Weights
+model/weights/*.pth
+!model/weights/README.md
+model/weights/*.pt
+model/weights/*.onnx
+model/weights/*.h5
+
+# Dataset Zips / Binary Archives
+dataset/
+dataset/*.zip
+*.zip
+*.tar.gz
+*.7z
+
+# IDE / OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+dataset/

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DEFAULT_LEAF_IMAGE, HERO_BG_IMAGE, SAMPLE_SCANS } from '../../constants/data';
+import { predictDisease } from '../../services/api';
 
 export default function DashboardTab({ onNavigate, onLaunchPrompt, onShowResult }) {
   const [studioImage, setStudioImage] = useState(DEFAULT_LEAF_IMAGE);
@@ -10,6 +11,7 @@ export default function DashboardTab({ onNavigate, onLaunchPrompt, onShowResult 
   const [isStudioAnalyzing, setIsStudioAnalyzing] = useState(false);
   const [studioHighlighted, setStudioHighlighted] = useState(false);
   const [savedScanToast, setSavedScanToast] = useState(false);
+  const [studioResult, setStudioResult] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -65,16 +67,23 @@ export default function DashboardTab({ onNavigate, onLaunchPrompt, onShowResult 
     setStudioCrop("tomato");
     setStudioGrowth("fruiting");
     setStudioNotes("Concentric target spots on mid-tier leaflets.");
+    setStudioResult(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const runStudioPrediction = () => {
+  const runStudioPrediction = async () => {
     setIsStudioAnalyzing(true);
-    setTimeout(() => {
+    try {
+      const apiResult = await predictDisease(studioImage, studioCrop, studioGrowth, studioNotes);
+      setIsStudioAnalyzing(false);
+      setStudioResult(apiResult);
+      setStudioHighlighted(true);
+      setTimeout(() => setStudioHighlighted(false), 1500);
+    } catch (err) {
       setIsStudioAnalyzing(false);
       setStudioHighlighted(true);
       setTimeout(() => setStudioHighlighted(false), 1500);
-    }, 1200);
+    }
   };
 
   return (

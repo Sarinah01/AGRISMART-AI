@@ -68,6 +68,7 @@ export default function App() {
 
   const [pendingPrompt, setPendingPrompt] = useState(null);
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [latestScanResult, setLatestScanResult] = useState(null);
 
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('agrismart_theme');
@@ -97,6 +98,12 @@ export default function App() {
   const handleLaunchPrompt = (promptText) => {
     setPendingPrompt(promptText);
     navigate(ROUTES.ASSISTANT);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCompleteScan = (scanData) => {
+    if (scanData) setLatestScanResult(scanData);
+    navigate(ROUTES.RESULT);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -174,7 +181,7 @@ export default function App() {
             <DashboardTab
               onLaunchPrompt={handleLaunchPrompt}
               onNavigate={handleNavigate}
-              onShowResult={() => navigate(ROUTES.RESULT)}
+              onShowResult={(result) => handleCompleteScan(result)}
             />
           </MainLayout>
         }
@@ -183,7 +190,7 @@ export default function App() {
         path={ROUTES.DETECTION}
         element={
           <MainLayout {...layoutProps}>
-            <DetectionTab onCompleteScan={() => navigate(ROUTES.RESULT)} />
+            <DetectionTab onCompleteScan={handleCompleteScan} />
           </MainLayout>
         }
       />
@@ -191,7 +198,7 @@ export default function App() {
         path={ROUTES.RESULT}
         element={
           <MainLayout {...layoutProps}>
-            <ResultTab onNavigate={handleNavigate} />
+            <ResultTab scanResult={latestScanResult} onNavigate={handleNavigate} />
           </MainLayout>
         }
       />
@@ -199,7 +206,7 @@ export default function App() {
         path={ROUTES.HISTORY}
         element={
           <MainLayout {...layoutProps}>
-            <HistoryTab onShowResult={() => navigate(ROUTES.RESULT)} />
+            <HistoryTab onShowResult={(result) => handleCompleteScan(result)} />
           </MainLayout>
         }
       />
@@ -210,6 +217,7 @@ export default function App() {
             <AssistantTab
               onClearPendingPrompt={() => setPendingPrompt(null)}
               pendingPrompt={pendingPrompt}
+              scanResult={latestScanResult}
               user={currentUser}
             />
           </MainLayout>

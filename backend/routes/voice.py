@@ -1,0 +1,31 @@
+"""
+POST /api/voice endpoint (Bonus Module E: Voice Interface Adapter).
+Provides STT (Speech-to-Text) and TTS (Text-to-Speech) adapter interface for regional voice communication.
+"""
+
+from fastapi import APIRouter
+from backend.schemas import VoiceRequest, VoiceResponse
+from backend.routes.assistant import generate_agronomic_reply
+
+router = APIRouter()
+
+@router.post("/api/voice", response_model=VoiceResponse, tags=["Bonus Module E: Farmer Assistant & Voice"])
+def voice_assistant_adapter(req: VoiceRequest):
+    """
+    Voice input interface adapter for regional farmer assistance.
+    Accepts speech transcript or audio payload and returns spoken answer.
+    """
+    input_text = req.transcription_text or "What precautions should I take for Early Blight?"
+    lang = req.language or "en"
+
+    # Run query through assistant agronomic engine
+    reply_text, _ = generate_agronomic_reply(input_text, "Tomato", "Tomato Early Blight", "91%")
+
+    return VoiceResponse(
+        status="success",
+        transcription=input_text,
+        reply_text=reply_text,
+        audio_base64=None,  # Teammate can fill in TTS audio base64 or audio stream
+        language=lang,
+        is_placeholder_stt=req.audio_base64 is None
+    )

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DEFAULT_LEAF_IMAGE } from '../../constants/data';
+import { predictDisease } from '../../services/api';
 
 export default function DetectionTab({ onCompleteScan }) {
   const [previewImg, setPreviewImg] = useState(DEFAULT_LEAF_IMAGE);
@@ -9,12 +10,14 @@ export default function DetectionTab({ onCompleteScan }) {
   const [notes, setNotes] = useState("Lower foliage spotted with concentric brown rings.");
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const fileInputRef = useRef(null);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setErrorMessage(null);
       const reader = new FileReader();
       reader.onload = (evt) => {
         setPreviewImg(evt.target.result);
@@ -34,6 +37,7 @@ export default function DetectionTab({ onCompleteScan }) {
     e.stopPropagation();
     const file = e.dataTransfer?.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      setErrorMessage(null);
       const reader = new FileReader();
       reader.onload = (evt) => {
         setPreviewImg(evt.target.result);
@@ -47,6 +51,7 @@ export default function DetectionTab({ onCompleteScan }) {
     if (e) e.stopPropagation();
     setPreviewImg(null);
     setFilename("");
+    setErrorMessage(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -55,26 +60,34 @@ export default function DetectionTab({ onCompleteScan }) {
     setFilename("tomato_early_blight_sample.jpg");
     setProgress(0);
     setIsScanning(false);
+    setErrorMessage(null);
   };
 
-  const startDiseaseScan = () => {
+  const startDiseaseScan = async () => {
     setIsScanning(true);
-    setProgress(15);
+    setProgress(25);
+    setErrorMessage(null);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + 25;
-        if (next >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsScanning(false);
-            onCompleteScan();
-          }, 500);
-          return 100;
-        }
-        return next;
-      });
-    }, 300);
+    const progressTimer = setInterval(() => {
+      setProgress((prev) => (prev < 85 ? prev + 15 : prev));
+    }, 200);
+
+    try {
+      const apiResult = await predictDisease(previewImg, crop, growthStage, notes);
+      clearInterval(progressTimer);
+      setProgress(100);
+
+      setTimeout(() => {
+        setIsScanning(false);
+        onCompleteScan({ ...apiResult, image: previewImg, crop, growthStage });
+      }, 400);
+
+    } catch (err) {
+      clearInterval(progressTimer);
+      setIsScanning(false);
+      setProgress(0);
+      setErrorMessage(err.message || "Failed to connect to /api/predict server.");
+    }
   };
 
   return (
@@ -193,7 +206,7 @@ export default function DetectionTab({ onCompleteScan }) {
                 <div className="flex items-center justify-between">
                   <span className="text-label-md font-label-md font-bold text-[#065f46] dark:text-emerald-300 flex items-center gap-2">
                     <span className="material-symbols-outlined animate-spin text-lg" data-icon="progress_activity">progress_activity</span>
-                    <span>ResNet-50 Classifier Running...</span>
+                    <span>ResNet-50 Classifier Running (POST /api/predict)...</span>
                   </span>
                   <span className="text-label-md font-bold text-primary dark:text-primary-fixed" id="scan-progress-percentage">{progress}%</span>
                 </div>
@@ -205,8 +218,15 @@ export default function DetectionTab({ onCompleteScan }) {
                   ></div>
                 </div>
                 <p className="text-label-sm font-label-sm text-[#065f46] dark:text-emerald-300 animate-pulse" id="scan-step-label">
-                  Evaluating foliar lesion probabilities and confidence threshold...
+                  Sending image payload to FastAPI /api/predict backend...
                 </p>
+              </div>
+            )}
+
+            {errorMessage && (
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-300 text-xs flex items-center gap-2 animate-fade-in-up">
+                <span className="material-symbols-outlined text-base text-red-600" data-icon="error">error</span>
+                <span><strong>API Error:</strong> {errorMessage}</span>
               </div>
             )}
           </div>

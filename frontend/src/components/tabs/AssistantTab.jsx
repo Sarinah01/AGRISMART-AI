@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_LEAF_IMAGE } from '../../constants/data';
 import { getStoredUser, computeInitials } from '../../utils/userStore';
+import { askAssistant, processVoice } from '../../services/api';
 
-export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, user }) {
+export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scanResult, user }) {
   const activeUser = user || getStoredUser();
+  const cropContext = scanResult?.crop || "Tomato";
+  const diseaseContext = scanResult?.prediction || "Tomato Early Blight";
+  const confidenceContext = scanResult?.confidence_percentage || "91%";
+
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'ai',
-      text: "Hi! I'm the AgriSmart AI Agronomist assistant. I'm preloaded with deep contextual telemetry for the active Tomato Early Blight (91% confidence) foliar diagnosis.",
+      text: `Hi! I'm the AgriSmart AI Agronomist assistant. I'm preloaded with telemetry for ${diseaseContext} (${confidenceContext} confidence).`,
       subtext: "How can I help you clarify this prediction, recommend bio-fungicides, or guide canopy management?"
     }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const chatFeedRef = useRef(null);
 
   useEffect(() => {
@@ -29,24 +35,7 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, user
     }
   }, [messages, isTyping]);
 
-  const getAiResponse = (userText) => {
-    const lower = userText.toLowerCase();
-    if (lower.includes("what does this disease mean") || lower.includes("mean")) {
-      return "Tomato Early Blight is caused by the fungus Alternaria solani. It typically starts on older, lower leaves as small, dark spots that enlarge into concentric rings resembling a target board. As it progresses, the tissue around the spots yellows, leading to premature leaf drop and reduced fruit yield.";
-    }
-    if (lower.includes("precaution") || lower.includes("what precautions")) {
-      return "Key precautions include:\n1. Prune and safely destroy infected lower leaves.\n2. Water exclusively at the base using drip irrigation to keep foliage dry.\n3. Space plants properly for optimal canopy airflow.\n4. Apply an approved copper-based or bio-fungicide if wet conditions persist.";
-    }
-    if (lower.includes("simply") || lower.includes("explain")) {
-      return "In simple terms: your tomato plant has a common fungal leaf infection called Early Blight. It makes dark target-like spots on bottom leaves. If you trim off those bad leaves and avoid splashing water on the foliage, the plant will protect its new leaves and tomatoes!";
-    }
-    if (lower.includes("prevent") || lower.includes("spread")) {
-      return "To stop spreading:\n• Disinfect pruning shears between cuts.\n• Mulch around the plant base to prevent soil fungi splashing onto lower leaves.\n• Avoid working among wet foliage.\n• Ensure rotation with non-solanaceous crops next season.";
-    }
-    return "For Tomato Early Blight (Alternaria solani), the primary precaution is physical removal of lower affected leaves and keeping foliar wetness minimal. If applying copper fungicides, ensure proper spray coverage on dry leaves.";
-  };
-
-  const sendMessage = (text) => {
+  const sendMessage = async (text) => {
     if (!text.trim()) return;
 
     const userMsg = {
@@ -58,15 +47,41 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, user
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const historyPayload = messages.map(m => ({ sender: m.sender, text: m.text }));
+      const response = await askAssistant(text, cropContext, diseaseContext, historyPayload);
+
+      setIsTyping(false);
       const aiReply = {
         id: Date.now() + 1,
         sender: 'ai',
-        text: getAiResponse(text)
+        text: response.reply,
+        subtext: response.subtext || `Source: ${response.source}`
       };
-      setIsTyping(false);
       setMessages((prev) => [...prev, aiReply]);
-    }, 850);
+    } catch (err) {
+      setIsTyping(false);
+      const errorReply = {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: `For ${diseaseContext}, key precautions include removing infected foliage, avoiding overhead watering, and monitoring adjacent crop rows.`,
+        subtext: `Fallback mode (${err.message})`
+      };
+      setMessages((prev) => [...prev, errorReply]);
+    }
+  };
+
+  const handleVoiceInput = async () => {
+    setIsVoiceRecording(true);
+    setTimeout(async () => {
+      setIsVoiceRecording(false);
+      try {
+        const voiceRes = await processVoice("What precautions should I take for Early Blight?", "en");
+        sendMessage(voiceRes.transcription || "What precautions should I take for Early Blight?");
+      } catch (err) {
+        sendMessage("What precautions should I take?");
+      }
+    }, 1500);
   };
 
   const handleSubmit = (e) => {
