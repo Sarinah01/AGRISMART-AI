@@ -98,6 +98,7 @@ class AssistantRequest(BaseModel):
     crop_context: Optional[str] = Field("Tomato", example="Tomato")
     disease_context: Optional[str] = Field("Tomato Early Blight", example="Tomato Early Blight")
     confidence_context: Optional[str] = Field("91%", example="91%")
+    language: Optional[str] = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
     history: Optional[List[ChatMessage]] = Field(default_factory=list)
 
 class AssistantResponse(BaseModel):
@@ -106,6 +107,7 @@ class AssistantResponse(BaseModel):
     subtext: Optional[str] = None
     source: str = Field(..., example="Agronomic Expert Logic / GenAI Adapter")
     suggested_prompts: List[str]
+    language: str = "en"
 
 # -------------------------------------------------------------
 # 6. VOICE ASSISTANT SCHEMAS (BONUS MODULE E)
@@ -113,7 +115,9 @@ class AssistantResponse(BaseModel):
 class VoiceRequest(BaseModel):
     audio_base64: Optional[str] = Field(None, example=None)
     transcription_text: Optional[str] = Field(None, example="How do I cure leaf spot?")
-    language: str = Field("en", example="en")  # en, hi, gu, mr, etc.
+    crop_context: Optional[str] = Field("Tomato", example="Tomato")
+    disease_context: Optional[str] = Field("Tomato Early Blight", example="Tomato Early Blight")
+    language: str = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
 
 class VoiceResponse(BaseModel):
     status: str = "success"
@@ -122,3 +126,4 @@ class VoiceResponse(BaseModel):
     audio_base64: Optional[str] = None  # Base64 TTS audio if available
     language: str
     is_placeholder_stt: bool = False
+    suggested_prompts: Optional[List[str]] = Field(default_factory=list)

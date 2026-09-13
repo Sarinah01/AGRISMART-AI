@@ -104,7 +104,7 @@ export async function evaluateIrrigation(payload) {
 /**
  * Queries AI Farmer Assistant (POST /api/assistant) - Bonus Module E
  */
-export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = []) {
+export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = [], language = 'en') {
   try {
     const response = await fetch(`${API_BASE_URL}/api/assistant`, {
       method: 'POST',
@@ -114,6 +114,7 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
         crop_context: cropContext,
         disease_context: diseaseContext,
         history,
+        language,
       }),
     });
 
@@ -131,7 +132,7 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
 /**
  * Sends voice input/transcript (POST /api/voice) - Bonus Module E
  */
-export async function processVoice(transcriptionText, language = 'en') {
+export async function processVoice(transcriptionText, language = 'en', cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight') {
   try {
     const response = await fetch(`${API_BASE_URL}/api/voice`, {
       method: 'POST',
@@ -139,6 +140,8 @@ export async function processVoice(transcriptionText, language = 'en') {
       body: JSON.stringify({
         transcription_text: transcriptionText,
         language,
+        crop_context: cropContext,
+        disease_context: diseaseContext,
       }),
     });
 

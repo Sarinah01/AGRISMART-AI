@@ -5,7 +5,7 @@ Provides STT (Speech-to-Text) and TTS (Text-to-Speech) adapter interface for reg
 
 from fastapi import APIRouter
 from backend.schemas import VoiceRequest, VoiceResponse
-from backend.routes.assistant import generate_agronomic_reply
+from backend.routes.assistant import generate_agronomic_reply, SUGGESTED_PROMPTS_BY_LANG
 
 router = APIRouter()
 
@@ -13,19 +13,23 @@ router = APIRouter()
 def voice_assistant_adapter(req: VoiceRequest):
     """
     Voice input interface adapter for regional farmer assistance.
-    Accepts speech transcript or audio payload and returns spoken answer.
+    Accepts speech transcript or audio payload and returns spoken answer in farmer's language.
     """
     input_text = req.transcription_text or "What precautions should I take for Early Blight?"
-    lang = req.language or "en"
+    lang = (req.language or "en").lower()
+    crop = req.crop_context or "Tomato"
+    disease = req.disease_context or "Tomato Early Blight"
 
     # Run query through assistant agronomic engine
-    reply_text, _ = generate_agronomic_reply(input_text, "Tomato", "Tomato Early Blight", "91%")
+    reply_text, _ = generate_agronomic_reply(input_text, crop, disease, "91%", lang)
 
     return VoiceResponse(
         status="success",
         transcription=input_text,
         reply_text=reply_text,
-        audio_base64=None,  # Teammate can fill in TTS audio base64 or audio stream
+        audio_base64=None,
         language=lang,
-        is_placeholder_stt=req.audio_base64 is None
+        is_placeholder_stt=req.audio_base64 is None,
+        suggested_prompts=SUGGESTED_PROMPTS_BY_LANG.get(lang, SUGGESTED_PROMPTS_BY_LANG["en"])
     )
+
