@@ -100,6 +100,7 @@ class AssistantRequest(BaseModel):
     confidence_context: Optional[str] = Field("91%", example="91%")
     language: Optional[str] = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
     history: Optional[List[ChatMessage]] = Field(default_factory=list)
+    api_key: Optional[str] = Field(None, example="AIzaSy...")
 
 class AssistantResponse(BaseModel):
     status: str = "success"
@@ -118,6 +119,7 @@ class VoiceRequest(BaseModel):
     crop_context: Optional[str] = Field("Tomato", example="Tomato")
     disease_context: Optional[str] = Field("Tomato Early Blight", example="Tomato Early Blight")
     language: str = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
+    api_key: Optional[str] = Field(None, example="AIzaSy...")
 
 class VoiceResponse(BaseModel):
     status: str = "success"

@@ -104,7 +104,7 @@ export async function evaluateIrrigation(payload) {
 /**
  * Queries AI Farmer Assistant (POST /api/assistant) - Bonus Module E
  */
-export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = [], language = 'en') {
+export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = [], language = 'en', apiKey = null) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/assistant`, {
       method: 'POST',
@@ -115,6 +115,7 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
         disease_context: diseaseContext,
         history,
         language,
+        api_key: apiKey || undefined,
       }),
     });
 
@@ -132,7 +133,7 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
 /**
  * Sends voice input/transcript (POST /api/voice) - Bonus Module E
  */
-export async function processVoice(transcriptionText, language = 'en', cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight') {
+export async function processVoice(transcriptionText, language = 'en', cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', apiKey = null) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/voice`, {
       method: 'POST',
@@ -142,6 +143,7 @@ export async function processVoice(transcriptionText, language = 'en', cropConte
         language,
         crop_context: cropContext,
         disease_context: diseaseContext,
+        api_key: apiKey || undefined,
       }),
     });
 

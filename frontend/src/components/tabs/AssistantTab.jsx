@@ -84,6 +84,8 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
 
   const [selectedLang, setSelectedLang] = useState('en');
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -95,6 +97,11 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
 
   const chatFeedRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  const handleSaveApiKey = (keyVal) => {
+    setApiKey(keyVal);
+    localStorage.setItem('gemini_api_key', keyVal.trim());
+  };
 
   // Initialize welcome message when language or scan result changes
   useEffect(() => {
@@ -151,7 +158,8 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
         cropContext,
         diseaseContext,
         historyPayload,
-        selectedLang
+        selectedLang,
+        apiKey.trim() || undefined
       );
 
       setIsTyping(false);
@@ -377,6 +385,21 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
             <span className="font-semibold">{autoSpeak ? "Voice Auto-Play ON" : "Voice Auto-Play OFF"}</span>
           </button>
 
+          {/* Gemini API Key Settings Button */}
+          <button
+            type="button"
+            onClick={() => setShowKeyInput(!showKeyInput)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-label-sm font-label-sm transition-all shadow-sm ${
+              apiKey
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 ring-1 ring-amber-400/30'
+                : 'bg-[#f4f7f4] dark:bg-[#162a1e] text-stone-600 dark:text-emerald-300 border-outline-variant/30 dark:border-emerald-700/40 hover:bg-emerald-50 dark:hover:bg-[#1d3827]'
+            }`}
+            title="Configure Gemini LLM API Key"
+          >
+            <span className="material-symbols-outlined text-base" data-icon="key">key</span>
+            <span className="font-semibold">{apiKey ? "Gemini LLM Key Active" : "Add LLM Key"}</span>
+          </button>
+
           {/* Clear Chat Button */}
           <button
             type="button"
@@ -403,6 +426,47 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
           </div>
         </div>
       </div>
+
+      {/* Expandable API Key Drawer */}
+      {showKeyInput && (
+        <div className="bg-emerald-950/90 dark:bg-[#152a1d] p-4 rounded-2xl border border-amber-500/40 shadow-lg animate-fade-in-up space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+              <span className="material-symbols-outlined text-base" data-icon="key">key</span>
+              <span>Gemini LLM API Key (Optional)</span>
+            </div>
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-emerald-300 underline hover:text-white"
+            >
+              Get Free Key from Google AI Studio
+            </a>
+          </div>
+          <p className="text-xs text-emerald-200/80">
+            Paste your Google Gemini API key to enable 100% live unseeded generative AI responses for any custom question.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              placeholder="AIzaSy..."
+              value={apiKey}
+              onChange={(e) => handleSaveApiKey(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl bg-[#0b160f] border border-emerald-700/50 text-white text-xs font-mono focus:outline-none focus:border-amber-400"
+            />
+            {apiKey && (
+              <button
+                type="button"
+                onClick={() => handleSaveApiKey('')}
+                className="px-3 py-2 rounded-xl bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold"
+              >
+                Clear Key
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Chat Container */}
       <div className="bg-surface-container-lowest dark:bg-[#112117] rounded-3xl border border-[#14532d]/15 dark:border-emerald-800/30 shadow-md flex flex-col h-[580px] overflow-hidden transition-colors duration-200">

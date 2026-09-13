@@ -5,7 +5,7 @@ Provides STT (Speech-to-Text) and TTS (Text-to-Speech) adapter interface for reg
 
 from fastapi import APIRouter
 from backend.schemas import VoiceRequest, VoiceResponse
-from backend.routes.assistant import generate_agronomic_reply, SUGGESTED_PROMPTS_BY_LANG
+from backend.routes.assistant import generate_dynamic_agronomic_reply, SUGGESTED_PROMPTS_BY_LANG
 
 router = APIRouter()
 
@@ -20,8 +20,8 @@ def voice_assistant_adapter(req: VoiceRequest):
     crop = req.crop_context or "Tomato"
     disease = req.disease_context or "Tomato Early Blight"
 
-    # Run query through assistant agronomic engine
-    reply_text, _ = generate_agronomic_reply(input_text, crop, disease, "91%", lang)
+    # Run query through dynamic assistant agronomic engine
+    reply_text, _ = generate_dynamic_agronomic_reply(input_text, crop, disease, "91%", lang)
 
     return VoiceResponse(
         status="success",
