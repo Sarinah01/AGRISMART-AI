@@ -5,9 +5,137 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-/**
- * Checks backend API health & model checkpoint status
- */
+// -------------------------------------------------------------
+// TOKEN MANAGEMENT HELPERS
+// -------------------------------------------------------------
+export function getAuthToken() {
+  return localStorage.getItem('agrismart_token');
+}
+
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem('agrismart_token', token);
+  } else {
+    localStorage.removeItem('agrismart_token');
+  }
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem('agrismart_token');
+}
+
+function getAuthHeaders(extraHeaders = {}) {
+  const token = getAuthToken();
+  const headers = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// -------------------------------------------------------------
+// 1. AUTHENTICATION ENDPOINTS
+// -------------------------------------------------------------
+export async function registerApi(userData) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Registration failed (${response.status})`);
+  }
+
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+  }
+  return data;
+}
+
+export async function loginApi(email, password) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Login failed (${response.status})`);
+  }
+
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+  }
+  return data;
+}
+
+export async function googleAuthApi(idToken) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Google login failed (${response.status})`);
+  }
+
+  if (data.access_token) {
+    setAuthToken(data.access_token);
+  }
+  return data;
+}
+
+export async function getMeApi() {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    clearAuthToken();
+    return null;
+  }
+
+  return await response.json();
+}
+
+export async function logoutApi() {
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+  } catch (err) {
+    console.warn("Logout API call error:", err);
+  } finally {
+    clearAuthToken();
+  }
+}
+
+export async function updateProfileApi(profileData) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+    method: 'PUT',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(profileData),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Profile update failed (${response.status})`);
+  }
+  return data;
+}
+
+// -------------------------------------------------------------
+// 2. CORE & BONUS AGRICULTURE ENDPOINTS
+// -------------------------------------------------------------
 export async function checkHealth() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/health`);
@@ -19,16 +147,12 @@ export async function checkHealth() {
   }
 }
 
-/**
- * Submits crop leaf image for disease prediction (POST /api/predict)
- */
 export async function predictDisease(imageFileOrBlob, crop = 'tomato', growthStage = 'vegetative', notes = '') {
   try {
     const formData = new FormData();
     if (imageFileOrBlob instanceof File || imageFileOrBlob instanceof Blob) {
       formData.append('file', imageFileOrBlob, imageFileOrBlob.name || 'leaf_specimen.jpg');
     } else if (typeof imageFileOrBlob === 'string' && imageFileOrBlob.startsWith('data:image')) {
-      // Convert data URL to blob
       const res = await fetch(imageFileOrBlob);
       const blob = await res.blob();
       formData.append('file', blob, 'leaf_specimen.jpg');
@@ -42,6 +166,7 @@ export async function predictDisease(imageFileOrBlob, crop = 'tomato', growthSta
 
     const response = await fetch(`${API_BASE_URL}/api/predict`, {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: formData,
     });
 
@@ -57,14 +182,11 @@ export async function predictDisease(imageFileOrBlob, crop = 'tomato', growthSta
   }
 }
 
-/**
- * Requests crop recommendation (POST /api/recommend) - Bonus Module A
- */
 export async function recommendCrops(payload) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/recommend`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     });
 
@@ -79,14 +201,11 @@ export async function recommendCrops(payload) {
   }
 }
 
-/**
- * Requests smart irrigation evaluation (POST /api/irrigation) - Bonus Module B
- */
 export async function evaluateIrrigation(payload) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/irrigation`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     });
 
@@ -101,14 +220,11 @@ export async function evaluateIrrigation(payload) {
   }
 }
 
-/**
- * Queries AI Farmer Assistant (POST /api/assistant) - Bonus Module E
- */
 export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = []) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/assistant`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         message,
         crop_context: cropContext,
@@ -128,14 +244,11 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
   }
 }
 
-/**
- * Sends voice input/transcript (POST /api/voice) - Bonus Module E
- */
 export async function processVoice(transcriptionText, language = 'en') {
   try {
     const response = await fetch(`${API_BASE_URL}/api/voice`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         transcription_text: transcriptionText,
         language,

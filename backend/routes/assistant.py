@@ -50,17 +50,38 @@ def farmer_assistant(req: AssistantRequest):
                     suggested_prompts=get_suggested_prompts(user_msg)
                 )
         except Exception as e:
-            # Fall back to grounded agronomic knowledge engine on network error
             pass
 
-    # 2. Grounded Agronomic Expert Rule Engine
-    reply_text, subtext = generate_agronomic_reply(user_msg, crop, disease, confidence)
+    if openai_key:
+        try:
+            headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are AgriSmart AI Agronomist."},
+                    {"role": "user", "content": f"Crop: {crop}, Disease: {disease}. Question: {user_msg}"}
+                ]
+            }
+            res = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                reply_text = data["choices"][0]["message"]["content"].strip()
+                return AssistantResponse(
+                    status="success",
+                    reply=reply_text,
+                    subtext=f"Response powered by OpenAI LLM",
+                    source="OpenAI GenAI Engine",
+                    suggested_prompts=get_suggested_prompts(user_msg)
+                )
+        except Exception:
+            pass
 
+    # Explicit service unavailable state when GenAI API key is missing
     return AssistantResponse(
-        status="success",
-        reply=reply_text,
-        subtext=subtext,
-        source="AgriSmart Grounded Agronomic Engine",
+        status="service_unavailable",
+        reply="GenAI Assistant unavailable: GEMINI_API_KEY or OPENAI_API_KEY is not configured in backend environment.",
+        subtext="GenAI Integration Boundary: Configure GEMINI_API_KEY in .env for live AI conversational answers.",
+        source="GenAI Integration Boundary",
         suggested_prompts=get_suggested_prompts(user_msg)
     )
 

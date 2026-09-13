@@ -9,6 +9,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import CORS_ORIGINS, HOST, PORT
+from backend.database import init_db
+from backend.auth.router import router as auth_router
 from backend.routes import health, predict, recommend, irrigation, assistant, voice
 from model.adapter import adapter_instance
 
@@ -33,6 +35,7 @@ app.add_middleware(
 )
 
 # Register Routers
+app.include_router(auth_router)
 app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(recommend.router)
@@ -44,6 +47,13 @@ app.include_router(voice.router)
 def startup_event():
     logger.info("==================================================")
     logger.info("🚀 AGRISMART-AI FastAPI Backend Server Started")
+    # Initialize SQLite database tables automatically
+    try:
+        init_db()
+        logger.info("💾 SQLite Database initialized (agrismart.db)")
+    except Exception as err:
+        logger.error(f"❌ Database initialization error: {err}")
+
     logger.info(f"Model Loaded Status: {adapter_instance.is_loaded}")
     if not adapter_instance.is_loaded:
         logger.info("ℹ️ ML Model Checkpoint pending in model/weights/resnet50_best.pth")

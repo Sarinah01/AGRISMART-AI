@@ -18,8 +18,9 @@ import {
   SustainabilityTab,
   FarmSettingsTab
 } from './components/tabs/PrototypeTabs';
-import { getStoredUser, saveStoredUser } from './utils/userStore';
+import { getStoredUser, saveStoredUser, computeInitials } from './utils/userStore';
 import { ROUTES, TAB_TO_PATH, PATH_TO_TAB } from './constants/routes';
+import { getMeApi, logoutApi } from './services/api';
 
 function MainLayout({ children, currentUser, darkMode, onToggleTheme, onLogout }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -77,6 +78,27 @@ export default function App() {
       window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Verify backend JWT session on startup
+  useEffect(() => {
+    async function verifySession() {
+      try {
+        const me = await getMeApi();
+        if (me) {
+          const formattedUser = {
+            ...me,
+            initials: computeInitials(me.name),
+            isLoggedIn: true,
+          };
+          setCurrentUser(formattedUser);
+          saveStoredUser(formattedUser);
+        }
+      } catch (err) {
+        console.warn("Session verification note:", err);
+      }
+    }
+    verifySession();
+  }, []);
+
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -113,18 +135,29 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user) => {
-    setCurrentUser(user);
-    saveStoredUser(user);
+    const formatted = {
+      ...user,
+      initials: computeInitials(user.name),
+      isLoggedIn: true,
+    };
+    setCurrentUser(formatted);
+    saveStoredUser(formatted);
     navigate(ROUTES.DASHBOARD);
   };
 
   const handleRegisterSuccess = (user) => {
-    setCurrentUser(user);
-    saveStoredUser(user);
+    const formatted = {
+      ...user,
+      initials: computeInitials(user.name),
+      isLoggedIn: true,
+    };
+    setCurrentUser(formatted);
+    saveStoredUser(formatted);
     navigate(ROUTES.PROFILE);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutApi();
     const loggedOutUser = { ...currentUser, isLoggedIn: false };
     setCurrentUser(loggedOutUser);
     saveStoredUser(loggedOutUser);
