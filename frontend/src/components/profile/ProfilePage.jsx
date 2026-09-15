@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { computeInitials, saveStoredUser, DEFAULT_USER } from '../../utils/userStore';
+import { updateProfileApi } from '../../services/api';
 
 export default function ProfilePage({ user, onUpdateUser, onLogout, onNavigate }) {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     role: user?.role || '',
-    farmName: user?.farmName || '',
+    farmName: user?.farmName || user?.farm_name || '',
     location: user?.location || '',
     phone: user?.phone || '',
     bio: user?.bio || '',
@@ -19,15 +20,29 @@ export default function ProfilePage({ user, onUpdateUser, onLogout, onNavigate }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     const initials = computeInitials(formData.name);
-    const updated = {
+    let updated = {
       ...user,
       ...formData,
       initials,
       isLoggedIn: true
     };
+
+    try {
+      const serverUser = await updateProfileApi({
+        name: formData.name,
+        role: formData.role,
+        farm_name: formData.farmName,
+        location: formData.location,
+        phone: formData.phone,
+        bio: formData.bio,
+      });
+      updated = { ...updated, ...serverUser, initials };
+    } catch (err) {
+      console.warn("Backend profile sync note:", err.message);
+    }
 
     saveStoredUser(updated);
     onUpdateUser(updated);

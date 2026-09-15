@@ -19,3 +19,24 @@ CORS_ORIGINS = [
 # Teammates GenAI API keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", None)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
+
+# Database Configuration (SQLite default)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./agrismart.db")
+
+# Google Identity Services Client ID
+GOOGLE_CLIENT_ID = os.getenv(
+    "GOOGLE_CLIENT_ID",
+    "794206114572-o0espebqkcgrs9cjpjvh9msb4u32nh0t.apps.googleusercontent.com"
+)
+
+# JWT Authentication Settings
+import secrets
+_env_jwt_secret = os.getenv("JWT_SECRET_KEY")
+if not _env_jwt_secret:
+    # Generate cryptographically secure secret if not explicitly provided
+    JWT_SECRET_KEY = secrets.token_hex(32)
+else:
+    JWT_SECRET_KEY = _env_jwt_secret
+
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7))  # 7 days

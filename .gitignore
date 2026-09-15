@@ -34,7 +34,6 @@ model/weights/*.onnx
 model/weights/*.h5
 
 # Dataset Zips / Binary Archives
-dataset/
 dataset/*.zip
 *.zip
 *.tar.gz

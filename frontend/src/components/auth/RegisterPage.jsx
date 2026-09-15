@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { registerUser, computeInitials } from '../../utils/userStore';
+import React, { useState, useEffect, useRef } from 'react';
+import { registerApi, googleAuthApi } from '../../services/api';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '794206114572-o0espebqkcgrs9cjpjvh9msb4u32nh0t.apps.googleusercontent.com';
 
 export default function RegisterPage({ onRegisterSuccess, onNavigateToLogin, onReturnToDashboard }) {
   const [name, setName] = useState('');
@@ -12,7 +14,44 @@ export default function RegisterPage({ onRegisterSuccess, onNavigateToLogin, onR
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const googleBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (window.google?.accounts?.id && googleBtnRef.current) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signup_with',
+          shape: 'pill',
+        });
+      } catch (err) {
+        console.warn("Google Sign-Up initialization note:", err);
+      }
+    }
+  }, []);
+
+  const handleGoogleResponse = async (response) => {
+    if (!response.credential) return;
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const res = await googleAuthApi(response.credential);
+      setIsLoading(false);
+      onRegisterSuccess(res.user);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err.message || 'Google authentication failed.');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -28,29 +67,21 @@ export default function RegisterPage({ onRegisterSuccess, onNavigateToLogin, onR
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const initials = computeInitials(name);
-      const newUser = {
-        name: name.trim(),
+    try {
+      const res = await registerApi({
         email: email.trim().toLowerCase(),
         password,
+        name: name.trim(),
         role,
-        farmName: farmName.trim() || "Independent Agricultural Site",
-        initials,
-        location: "Primary Research Unit",
-        phone: "+91 98765 00000",
-        bio: `${role} managing smart crop diagnostics.`,
-        isLoggedIn: true
-      };
+        farm_name: farmName.trim() || "AgriSmart Farm",
+      });
 
-      const res = registerUser(newUser);
-      if (res.success) {
-        onRegisterSuccess(newUser);
-      } else {
-        setError(res.message);
-      }
-    }, 400);
+      setIsLoading(false);
+      onRegisterSuccess(res.user);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err.message || "Registration failed.");
+    }
   };
 
   return (
@@ -78,8 +109,18 @@ export default function RegisterPage({ onRegisterSuccess, onNavigateToLogin, onR
           Join AgriSmart AI
         </h2>
         <p className="text-body-sm font-body-sm text-on-surface-variant dark:text-emerald-200/70 mt-1">
-          Set up your profile to start logging leaf disease inspections
+          Set up your profile to start logging leaf disease inspections with real FastAPI JWT auth
         </p>
+      </div>
+
+      {/* Google Sign-Up Container */}
+      <div className="space-y-2">
+        <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]"></div>
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-outline-variant/30 dark:border-emerald-900/40"></div>
+          <span className="flex-shrink mx-3 text-[11px] text-on-surface-variant/70 dark:text-emerald-300/50 font-bold uppercase">or email registration</span>
+          <div className="flex-grow border-t border-outline-variant/30 dark:border-emerald-900/40"></div>
+        </div>
       </div>
 
       {/* Error Alert */}
@@ -236,7 +277,7 @@ export default function RegisterPage({ onRegisterSuccess, onNavigateToLogin, onR
 
       {/* Footer */}
       <div className="pt-3 border-t border-outline-variant/20 dark:border-emerald-900/30 text-center text-xs text-on-surface-variant/80 dark:text-emerald-300/60">
-        <span>By signing up, you gain instant access to student AI vision models.</span>
+        <span>By signing up, you receive a signed FastAPI JWT token &amp; active session.</span>
       </div>
     </div>
   );

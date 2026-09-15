@@ -1,70 +1,97 @@
 # AGRISMART-AI 🌾🤖
 > **Intelligent Agriculture for a Sustainable Future**  
-> *SIH 2026 Hackathon Problem Statement 1 Submission*
+> *SIH 2026 Hackathon Submission*
 
 ---
 
 ## 📌 1. Project Overview & Scope
 
-**AGRISMART-AI** is an AI-powered agricultural advisory platform designed for farmers, agronomists, and agricultural stakeholders. The platform combines Computer Vision foliar pathology detection, explainable crop cultivar recommendation, smart irrigation control, and a grounded GenAI conversational farmer assistant.
+**AGRISMART-AI** is an AI-powered agricultural advisory platform designed for farmers, agronomists, and agricultural stakeholders. The platform combines Computer Vision foliar pathology detection, explainable crop cultivar recommendation, smart irrigation control, grounded GenAI conversational advisory, and server-side JWT / Google OAuth authentication.
 
 ### 🏆 Implemented Challenge Scope
-- **Mandatory Core Task:** Autonomous Crop Disease Detection from Leaf Images (ResNet-50 PyTorch Pipeline).
+- **Real JWT & Google Authentication Authority:** FastAPI backend authority, SQLite database via SQLAlchemy, secure password hashing, and Google Identity Services server-side token verification.
+- **Mandatory Core Task:** Autonomous Crop Disease Detection from Leaf Images (ResNet-50 PyTorch Model Adapter).
 - **Bonus Module A:** Crop Recommendation Intelligence (`POST /api/recommend`).
 - **Bonus Module B:** Smart Irrigation & Blight Prevention (`POST /api/irrigation`).
 - **Bonus Module E:** GenAI Farmer Assistant & Voice Interface Adapter (`POST /api/assistant`, `POST /api/voice`).
 
 ---
 
-## 🏗️ 2. System Architecture
+## 🔐 2. Authentication & Security Architecture
+
+AGRISMART-AI implements real, production-ready authentication:
 
 ```text
-AGRISMART-AI/
-├── frontend/             # React (Vite) + Tailwind CSS Premium UI
-│   ├── src/
-│   │   ├── components/   # DashboardTab, DetectionTab, ResultTab, AssistantTab, PrototypeTabs
-│   │   ├── services/     # api.js (REST Client for FastAPI Backend)
-│   │   └── utils/        # userStore.js (LocalStorage & Session state)
-│   └── vite.config.js
-├── backend/              # Python FastAPI REST API Backend
-│   ├── main.py           # FastAPI entry point & CORS configuration
-│   ├── config.py         # App configuration & environment setup
-│   ├── schemas.py        # Pydantic request & response schemas
-│   └── routes/           # health, predict, recommend, irrigation, assistant, voice
-├── model/                # ML Model Adapter & Weights Directory
-│   ├── adapter.py        # CropDiseaseModelAdapter (Isolates PyTorch inference)
-│   ├── config.py         # 15 PlantVillage class mapping & agronomic metadata
-│   └── weights/          # Destination for ML teammate's resnet50_best.pth
-├── dataset/              # Dataset directory
-│   └── PlantVillage/     # 15 class folders, train.csv (80%), val.csv (20%), train.py
-├── report/               # Technical Model Report
-│   └── SIH_Technical_Report.md
-├── requirements.txt      # Python dependencies
-├── README.md             # Project documentation & startup guide
-└── .gitignore            # Git exclusion rules
+React Frontend (Vite)
+  ├── Google Identity Services (Client ID in VITE_GOOGLE_CLIENT_ID)
+  ├── Auth & API Service (JWT stored in LocalStorage, Bearer Token)
+  └── Protected Application UI
+        │
+        ▼ (HTTP REST API)
+FastAPI Backend Authority
+  ├── POST /api/auth/register
+  ├── POST /api/auth/login
+  ├── POST /api/auth/google  ──▶ Server-Side Verification via google.oauth2.id_token
+  ├── GET  /api/auth/me      ──▶ Protected Endpoint (JWT Verification)
+  └── POST /api/auth/logout
+        │
+        ▼
+SQLite Database (SQLAlchemy)
+  └── users table (id, email, name, password_hash, google_sub, auth_provider, created_at)
+```
+
+### Key Security Features
+- **FastAPI Authentication Authority:** Backend verifies all credentials and issues signed JWT tokens.
+- **SQLite Database:** Automatically creates `agrismart.db` using SQLAlchemy models on server startup.
+- **Google OAuth Verification:** Google ID token is verified server-side using Google's public certs. Uses stable Google `sub` identifier.
+- **Password Hashing:** Secure salted password hashing using `bcrypt`.
+- **Environment Configuration:** All private secrets (`JWT_SECRET_KEY`, `DATABASE_URL`) are isolated in backend environment variables. Frontend only uses public `VITE_GOOGLE_CLIENT_ID`.
+
+---
+
+## ⚙️ 3. Environment Configuration
+
+### Root Backend `.env` Setup
+Create a `.env` file in the project root directory (copied from `.env.example`):
+
+```env
+GOOGLE_CLIENT_ID=794206114572-o0espebqkcgrs9cjpjvh9msb4u32nh0t.apps.googleusercontent.com
+JWT_SECRET_KEY=agrismart_super_secret_jwt_key_sih_2026_demo
+DATABASE_URL=sqlite:///./agrismart.db
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+*Note: If `JWT_SECRET_KEY` is omitted, the backend automatically generates a cryptographically secure 32-byte secret on startup.*
+
+### Frontend `.env` Setup
+Create a `.env` file inside `frontend/`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_GOOGLE_CLIENT_ID=794206114572-o0espebqkcgrs9cjpjvh9msb4u32nh0t.apps.googleusercontent.com
 ```
 
 ---
 
-## 🚀 3. Quick Start & Startup Instructions (Under 10 Minutes)
+## 🚀 4. Quick Start & Startup Instructions
 
 ### Prerequisites
 - Python 3.9+ installed
 - Node.js 18+ & npm installed
 
-### Step 1: Clone Repository & Setup Backend Environment
+### Step 1: Setup Backend & Virtual Environment
 ```bash
 # Clone repository
 git clone https://github.com/Yuvraj9652/AGRISMART-AI.git
 cd AGRISMART-AI
 
-# Create and activate Python virtual environment
+# Create virtual environment
 python -m venv venv
 
-# On Windows PowerShell:
+# Activate virtual environment
+# Windows:
 .\venv\Scripts\activate
-
-# On Linux/macOS:
+# Linux/macOS:
 source venv/bin/activate
 
 # Install dependencies
@@ -76,96 +103,55 @@ pip install -r requirements.txt
 # Start FastAPI backend (runs on http://localhost:8000)
 python -m uvicorn backend.main:app --reload --port 8000
 ```
-*Verify API docs live at: `http://localhost:8000/docs`*
+*Database `agrismart.db` is initialized automatically on startup.*  
+*Interactive Swagger Documentation live at: `http://localhost:8000/docs`*
 
 ### Step 3: Launch React/Vite Frontend
 In a new terminal window:
 ```bash
-# Navigate to frontend folder
 cd frontend
-
-# Install npm dependencies
 npm install
-
-# Start Vite dev server (runs on http://localhost:5173)
 npm run dev
 ```
 *Open `http://localhost:5173` in your browser.*
 
 ---
 
-## 🔌 4. API Endpoints Contract
+## 🔌 5. API Endpoints Contract
 
-The backend exposes clean, structured REST API endpoints:
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | System health check & model checkpoint loaded status |
-| `POST` | `/api/predict` | Uploads leaf image, runs ResNet-50 PyTorch adapter, returns prediction |
-| `POST` | `/api/recommend` | Evaluates soil pH, temp, rainfall NPK & returns top crop recommendations |
-| `POST` | `/api/irrigation` | Evaluates soil moisture & rain forecast to calculate drip irrigation decisions |
-| `POST` | `/api/assistant` | Queries grounded agronomist expert AI assistant |
-| `POST` | `/api/voice` | Regional voice STT / TTS assistant interface adapter |
-
----
-
-## 🤖 5. ML Teammate Integration (.pth Checkpoint)
-
-The model adapter in `model/adapter.py` isolates model loading and inference from the API code.
-
-### Instructions for ML Teammate:
-To plug in your trained PyTorch `.pth` model weights:
-1. Train your model using `dataset/PlantVillage/train.py` or your custom notebook.
-2. Save your trained state dict checkpoint as **`resnet50_best.pth`**.
-3. Place the `.pth` file inside the `model/weights/` directory:
-   ```text
-   model/weights/resnet50_best.pth
-   ```
-4. **Checkpoint Requirements:**
-   - Architecture: ResNet-50 backbone
-   - Number of classes: 15 (matching `model/config.py`)
-   - Class order: Alphabetical (matching `CLASS_NAMES` in `model/config.py`)
-   - Input size: 224 × 224 RGB
-   - Normalization: ImageNet mean `[0.485, 0.456, 0.406]` and std `[0.229, 0.224, 0.225]`
-   - Checkpoint Dict Format: `{"model_state_dict": model.state_dict(), "classes": classes}`
-
-*When `resnet50_best.pth` is placed in `model/weights/`, the backend automatically loads live PyTorch GPU/CPU inference on server restart!*
+| Group | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/api/auth/register` | Registers new user and returns JWT token |
+| **Auth** | `POST` | `/api/auth/login` | Authenticates email + password and returns JWT token |
+| **Auth** | `POST` | `/api/auth/google` | Verifies Google ID token server-side and issues JWT |
+| **Auth** | `GET` | `/api/auth/me` | Protected route returning authenticated user profile |
+| **Auth** | `PUT` | `/api/auth/profile` | Updates user profile details in SQLite database |
+| **Auth** | `POST` | `/api/auth/logout` | Client session logout acknowledgement |
+| **System** | `GET` | `/api/health` | System health check & model checkpoint loaded status |
+| **Core** | `POST` | `/api/predict` | Uploads leaf image, runs ResNet-50 PyTorch adapter |
+| **Bonus A** | `POST` | `/api/recommend` | Evaluates soil pH, temp, rainfall NPK & crop suitability |
+| **Bonus B** | `POST` | `/api/irrigation` | Evaluates soil moisture & rain forecast for smart irrigation |
+| **Bonus E** | `POST` | `/api/assistant` | Queries grounded agronomist expert AI assistant |
+| **Bonus E** | `POST` | `/api/voice` | Regional voice STT / TTS assistant interface adapter |
 
 ---
 
-## 💬 6. GenAI Teammate Integration (API Keys)
+## 🤖 6. Service Availability & ML / GenAI Integration Status
 
-To activate Gemini or OpenAI LLM generation in the Farmer Assistant:
-1. Create a `.env` file in the root directory (or set environment variables):
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   OPENAI_API_KEY=your_openai_api_key_here
-   ```
-2. The assistant router (`backend/routes/assistant.py`) automatically detects the key and switches from the grounded agronomic rule engine to live LLM generation.
+AGRISMART-AI follows a **Strict Integration Boundary** design pattern. It does NOT generate fake or hardcoded predictions to pretend a model is loaded when it is not.
 
----
+- **ML ResNet-50 Model Adapter (`model/adapter.py`):**
+  - Accepts `.pth` PyTorch weights placed in `model/weights/resnet50_best.pth`.
+  - When checkpoint is loaded, executes real PyTorch ResNet-50 inference.
+  - When `.pth` checkpoint is pending, returns explicit adapter status (`checkpoint_loaded: false`, `is_placeholder: true`) so the UI displays an authentic status badge.
 
-## 📊 7. Dataset & Metrics Summary
-
-- **Dataset:** PlantVillage Dataset (`dataset/PlantVillage`).
-- **Classes:** 15 foliage disease classes across Tomato, Potato, and Bell Pepper.
-- **Split:** 80% Train (`train.csv`), 20% Validation (`val.csv`).
-- **Held-Out Test Set:** Reserved unseen field test set per Section 4.1 of the Problem Statement.
-- **Primary Metric:** Macro-averaged F1 Score (evaluated on held-out test set).
-- **Report Document:** Detailed technical report available in `report/SIH_Technical_Report.md`.
-
----
-
-## 📹 8. Demo Walkthrough
-
-1. **Dashboard (`/`):** View system telemetry, operational stats, and rapid diagnosis overview.
-2. **Disease Detection Studio (`/detection`):** Upload or select a leaf specimen, select crop type, and click **Analyze Crop**. Triggers `POST /api/predict` and displays real classification, confidence, and precautionary measures.
-3. **Diagnostic Results (`/result`):** Inspect lesion location, model confidence meter, disease biology, and actionable precautions.
-4. **Crop Recommendation (`/recommendation`):** Adjust soil pH, temperature, and rainfall sliders to test `POST /api/recommend` decision logic.
-5. **Smart Irrigation (`/irrigation`):** Adjust soil moisture and rain forecast to test `POST /api/irrigation` automated valve lockout logic.
-6. **AI Assistant (`/assistant`):** Ask conversational agronomic questions or click suggested prompt pills to trigger `POST /api/assistant`.
+- **GenAI Farmer Assistant (`backend/routes/assistant.py`):**
+  - Connects dynamically to Gemini LLM (`GEMINI_API_KEY`) or OpenAI (`OPENAI_API_KEY`).
+  - If API key is missing, returns `status: "service_unavailable"` informing the user that GenAI API keys are pending configuration, rather than outputting hardcoded AI responses.
 
 ---
 
 ## 📄 License & Originality Declaration
+Submitted for **SIH 2026 Hackathon Evaluation**. Reused open-source libraries and pretrained models are cited above. Original solution architecture built for SIH evaluation.
+License & Originality Declaration
 Submitted for **SIH 2026 Internal Hackathon**. Reused open-source libraries and pretrained models are cited above. Original solution architecture built for SIH evaluation.

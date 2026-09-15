@@ -106,105 +106,51 @@ def farmer_assistant(req: AssistantRequest):
                 "Authorization": f"Bearer {openai_key}",
                 "Content-Type": "application/json"
             }
+            res = requests.post(url, json=prompt_payload, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                reply_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                return AssistantResponse(
+                    status="success",
+                    reply=reply_text,
+                    subtext=f"Grounded response powered by Gemini LLM (Telemetry: {disease} {confidence})",
+                    source="Gemini GenAI Engine",
+                    suggested_prompts=get_suggested_prompts(user_msg)
+                )
+        except Exception as e:
+            pass
 
-            system_prompt = (
-                f"You are AgriSmart AI Agronomist, a warm, highly knowledgeable, empathetic agricultural advisor for farmers in India.\n"
-                f"Farmer Name: {user_name}.\n"
-                f"STRICT INSTRUCTION: Respond strictly in {target_lang_name} language using its native script.\n"
-                f"Active Telemetry Context: Crop={crop}, Diagnosed Disease={disease}, Confidence={confidence}.\n"
-                f"Task: Provide direct, clear, conversational advice specifically answering what the farmer asked in 2-4 sentences. "
-                f"If the farmer is greeting you (e.g. 'hi', 'hello', 'namaste'), greet them warmly by name ({user_name}) and ask how you can help with their {crop}."
-            )
-
-            messages_payload = [{"role": "system", "content": system_prompt}]
-            if req.history:
-                for h in req.history[-6:]:
-                    role = "assistant" if h.sender == "ai" else "user"
-                    messages_payload.append({"role": role, "content": h.text})
-            messages_payload.append({"role": "user", "content": user_msg})
-
-            models_to_try = ["gpt-4o-mini", "gpt-3.5-turbo", "gpt-4o"]
-            for model_name in models_to_try:
-                payload = {
-                    "model": model_name,
-                    "messages": messages_payload,
-                    "temperature": 0.7
-                }
-                res = requests.post(url, headers=headers, json=payload, timeout=8)
-                if res.status_code == 200:
-                    data = res.json()
-                    reply_text = data["choices"][0]["message"]["content"].strip()
-                    return AssistantResponse(
-                        status="success",
-                        reply=reply_text,
-                        subtext=f"Live OpenAI Powered ({model_name} · {target_lang_name})",
-                        source="OpenAI GPT Engine",
-                        suggested_prompts=SUGGESTED_PROMPTS_BY_LANG.get(lang, SUGGESTED_PROMPTS_BY_LANG["en"]),
-                        language=lang
-                    )
+    if openai_key:
+        try:
+            headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are AgriSmart AI Agronomist."},
+                    {"role": "user", "content": f"Crop: {crop}, Disease: {disease}. Question: {user_msg}"}
+                ]
+            }
+            res = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                reply_text = data["choices"][0]["message"]["content"].strip()
+                return AssistantResponse(
+                    status="success",
+                    reply=reply_text,
+                    subtext=f"Response powered by OpenAI LLM",
+                    source="OpenAI GenAI Engine",
+                    suggested_prompts=get_suggested_prompts(user_msg)
+                )
         except Exception:
             pass
 
-    # 2. Attempt Google Gemini LLM API call if Gemini API key is available
-    if gemini_key:
-        models_to_try = [
-            "gemini-1.5-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-pro"
-        ]
-
-        history_summary = ""
-        if req.history:
-            recent_history = req.history[-6:]
-            history_summary = "Conversation History:\n" + "\n".join(
-                [f"{h.sender.upper()}: {h.text}" for h in recent_history]
-            ) + "\n"
-
-        prompt_text = (
-            f"You are AgriSmart AI Agronomist, a highly knowledgeable, empathetic expert agricultural advisor for farmers in India.\n"
-            f"Farmer Name: {user_name}.\n"
-            f"STRICT INSTRUCTION: Respond strictly in {target_lang_name} language using its native script.\n"
-            f"Active Telemetry Context: Crop={crop}, Diagnosed Disease={disease}, Confidence={confidence}.\n"
-            f"{history_summary}"
-            f"User Question: {user_msg}\n"
-            f"Task: Provide direct, clear, conversational advice specifically answering what the farmer asked in 2-4 sentences. "
-            f"If the user is greeting you (e.g. 'hi', 'hello', 'namaste'), greet them warmly by name ({user_name}) and ask how you can help with their {crop}."
-        )
-
-        prompt_payload = {
-            "contents": [{
-                "parts": [{"text": prompt_text}]
-            }]
-        }
-
-        for model_name in models_to_try:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
-                res = requests.post(url, json=prompt_payload, timeout=8)
-                if res.status_code == 200:
-                    data = res.json()
-                    reply_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    return AssistantResponse(
-                        status="success",
-                        reply=reply_text,
-                        subtext=f"Live Gemini GenAI Powered ({model_name} · {target_lang_name})",
-                        source="Gemini GenAI Engine",
-                        suggested_prompts=SUGGESTED_PROMPTS_BY_LANG.get(lang, SUGGESTED_PROMPTS_BY_LANG["en"]),
-                        language=lang
-                    )
-            except Exception:
-                continue
-
-    # 3. Dynamic Grounded Agronomic & Conversational NLP Engine (No hardcoded static templates)
-    reply_text, subtext = generate_dynamic_agronomic_reply(user_msg, crop, disease, confidence, lang, user_name)
-
+    # Explicit service unavailable state when GenAI API key is missing
     return AssistantResponse(
-        status="success",
-        reply=reply_text,
-        subtext=subtext,
-        source=f"AgriSmart Dynamic Agronomic Engine ({LANGUAGE_NAMES[lang]})",
-        suggested_prompts=SUGGESTED_PROMPTS_BY_LANG.get(lang, SUGGESTED_PROMPTS_BY_LANG["en"]),
-        language=lang
+        status="service_unavailable",
+        reply="GenAI Assistant unavailable: GEMINI_API_KEY or OPENAI_API_KEY is not configured in backend environment.",
+        subtext="GenAI Integration Boundary: Configure GEMINI_API_KEY in .env for live AI conversational answers.",
+        source="GenAI Integration Boundary",
+        suggested_prompts=get_suggested_prompts(user_msg)
     )
 
 def generate_dynamic_agronomic_reply(text: str, crop: str, disease: str, confidence: str, lang: str, user_name: str = "Farmer") -> tuple:

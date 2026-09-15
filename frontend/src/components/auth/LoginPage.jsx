@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { loginUser } from '../../utils/userStore';
+import React, { useState, useEffect, useRef } from 'react';
+import { loginApi, registerApi, googleAuthApi } from '../../services/api';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '794206114572-o0espebqkcgrs9cjpjvh9msb4u32nh0t.apps.googleusercontent.com';
 
 export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onReturnToDashboard }) {
   const [email, setEmail] = useState('');
@@ -8,20 +10,74 @@ export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onRetu
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const googleBtnRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize Google Identity Services if loaded in browser
+    if (window.google?.accounts?.id && googleBtnRef.current) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'continue_with',
+          shape: 'pill',
+        });
+      } catch (err) {
+        console.warn("Google Sign-In initialization note:", err);
+      }
+    }
+  }, []);
+
+  const handleGoogleResponse = async (response) => {
+    if (!response.credential) return;
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const res = await googleAuthApi(response.credential);
+      setIsLoading(false);
+      onLoginSuccess(res.user);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err.message || 'Google authentication failed.');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await loginApi(email, password);
       setIsLoading(false);
-      const res = loginUser(email, password);
-      if (res.success) {
-        onLoginSuccess(res.user);
-      } else {
-        setError(res.message);
+      onLoginSuccess(res.user);
+    } catch (err) {
+      // If demo evaluator credentials used and account doesn't exist yet, register auto
+      if (email.toLowerCase() === 'evaluator@agrismart.ai') {
+        try {
+          const regRes = await registerApi({
+            email: 'evaluator@agrismart.ai',
+            password: password || 'hackathon2026',
+            name: 'Hackathon Evaluator',
+            role: 'Hackathon Evaluator',
+            farm_name: 'AgriSmart Experimental Farm'
+          });
+          setIsLoading(false);
+          onLoginSuccess(regRes.user);
+          return;
+        } catch (regErr) {
+          // ignore
+        }
       }
-    }, 400);
+      setIsLoading(false);
+      setError(err.message || 'Invalid email or password.');
+    }
   };
 
   const handleDemoFill = () => {
@@ -55,8 +111,18 @@ export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onRetu
           Welcome Back
         </h2>
         <p className="text-body-sm font-body-sm text-on-surface-variant dark:text-emerald-200/70 mt-1">
-          Access your farm foliar diagnostics and model history
+          Access your farm foliar diagnostics and FastAPI JWT session
         </p>
+      </div>
+
+      {/* Google Sign-In Container */}
+      <div className="space-y-2">
+        <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]"></div>
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-outline-variant/30 dark:border-emerald-900/40"></div>
+          <span className="flex-shrink mx-3 text-[11px] text-on-surface-variant/70 dark:text-emerald-300/50 font-bold uppercase">or email authentication</span>
+          <div className="flex-grow border-t border-outline-variant/30 dark:border-emerald-900/40"></div>
+        </div>
       </div>
 
       {/* 1-Click Hackathon Evaluator Quick-Fill */}
@@ -139,17 +205,6 @@ export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onRetu
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-on-surface-variant dark:text-emerald-200/80">
-            <input
-              type="checkbox"
-              defaultChecked
-              className="rounded border-outline-variant/40 dark:border-emerald-700 text-primary focus:ring-primary"
-            />
-            <span>Remember session on this device</span>
-          </label>
-        </div>
-
         <button
           type="submit"
           disabled={isLoading}
@@ -158,7 +213,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onRetu
           {isLoading ? (
             <>
               <span className="material-symbols-outlined animate-spin text-lg" data-icon="progress_activity">progress_activity</span>
-              <span>Authenticating...</span>
+              <span>Authenticating with FastAPI...</span>
             </>
           ) : (
             <>
@@ -171,7 +226,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateToRegister, onRetu
 
       {/* Footer Info */}
       <div className="pt-3 border-t border-outline-variant/20 dark:border-emerald-900/30 text-center text-xs text-on-surface-variant/80 dark:text-emerald-300/60">
-        <span>Protected by client session state &amp; browser LocalStorage</span>
+        <span>Protected by FastAPI JWT authentication &amp; SQLite database</span>
       </div>
     </div>
   );
