@@ -95,12 +95,13 @@ class ChatMessage(BaseModel):
 
 class AssistantRequest(BaseModel):
     message: str = Field(..., example="What precautions should I take for Early Blight?")
+    user_name: Optional[str] = Field(None, example="Rahul Sharma")
     crop_context: Optional[str] = Field("Tomato", example="Tomato")
     disease_context: Optional[str] = Field("Tomato Early Blight", example="Tomato Early Blight")
     confidence_context: Optional[str] = Field("91%", example="91%")
     language: Optional[str] = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
     history: Optional[List[ChatMessage]] = Field(default_factory=list)
-    api_key: Optional[str] = Field(None, example="AIzaSy...")
+    api_key: Optional[str] = Field(None, example="AIzaSy... or sk-...")
 
 class AssistantResponse(BaseModel):
     status: str = "success"
@@ -116,10 +117,11 @@ class AssistantResponse(BaseModel):
 class VoiceRequest(BaseModel):
     audio_base64: Optional[str] = Field(None, example=None)
     transcription_text: Optional[str] = Field(None, example="How do I cure leaf spot?")
+    user_name: Optional[str] = Field(None, example="Rahul Sharma")
     crop_context: Optional[str] = Field("Tomato", example="Tomato")
     disease_context: Optional[str] = Field("Tomato Early Blight", example="Tomato Early Blight")
     language: str = Field("en", example="en")  # en, hi, pa, mr, gu, te, ta, bn
-    api_key: Optional[str] = Field(None, example="AIzaSy...")
+    api_key: Optional[str] = Field(None, example="AIzaSy... or sk-...")
 
 class VoiceResponse(BaseModel):
     status: str = "success"

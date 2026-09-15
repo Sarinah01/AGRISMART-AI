@@ -159,7 +159,8 @@ export default function AssistantTab({ pendingPrompt, onClearPendingPrompt, scan
         diseaseContext,
         historyPayload,
         selectedLang,
-        apiKey.trim() || undefined
+        apiKey.trim() || undefined,
+        userName
       );
 
       setIsTyping(false);

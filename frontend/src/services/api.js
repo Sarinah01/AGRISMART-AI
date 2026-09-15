@@ -104,13 +104,14 @@ export async function evaluateIrrigation(payload) {
 /**
  * Queries AI Farmer Assistant (POST /api/assistant) - Bonus Module E
  */
-export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = [], language = 'en', apiKey = null) {
+export async function askAssistant(message, cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', history = [], language = 'en', apiKey = null, userName = null) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/assistant`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
+        user_name: userName || undefined,
         crop_context: cropContext,
         disease_context: diseaseContext,
         history,
@@ -133,7 +134,7 @@ export async function askAssistant(message, cropContext = 'Tomato', diseaseConte
 /**
  * Sends voice input/transcript (POST /api/voice) - Bonus Module E
  */
-export async function processVoice(transcriptionText, language = 'en', cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', apiKey = null) {
+export async function processVoice(transcriptionText, language = 'en', cropContext = 'Tomato', diseaseContext = 'Tomato Early Blight', apiKey = null, userName = null) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/voice`, {
       method: 'POST',
@@ -141,6 +142,7 @@ export async function processVoice(transcriptionText, language = 'en', cropConte
       body: JSON.stringify({
         transcription_text: transcriptionText,
         language,
+        user_name: userName || undefined,
         crop_context: cropContext,
         disease_context: diseaseContext,
         api_key: apiKey || undefined,
